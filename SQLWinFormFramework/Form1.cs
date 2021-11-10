@@ -19,6 +19,7 @@ namespace SQLWinForm
             ShowGrid();
         }
 
+        //Method to show the updated grid after every button press
         private void ShowGrid()
         {
             SqlConnection con = new SqlConnection(ConnectionString);
