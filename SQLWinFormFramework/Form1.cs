@@ -23,7 +23,7 @@ namespace SQLWinForm
         {
             SqlConnection con = new SqlConnection(ConnectionString);
             con.Open();
-            SqlCommand cmd = new SqlCommand("Select * from UserTab", con);
+            SqlCommand cmd = new SqlCommand("Select * from GameList", con);
             SqlDataAdapter da = new SqlDataAdapter(cmd);
             DataTable dt = new DataTable();
             da.Fill(dt);
@@ -38,10 +38,10 @@ namespace SQLWinForm
         {
             SqlConnection con = new SqlConnection(ConnectionString);
             con.Open();
-            SqlCommand cmd = new SqlCommand("insert into UserTab values (@ID,@Name,@Age)", con);
-            cmd.Parameters.AddWithValue("@ID", int.Parse(IDBox.Text));
+            SqlCommand cmd = new SqlCommand("insert into GameList values (@Name,@Release_Year,@Completed)", con);
             cmd.Parameters.AddWithValue("@Name", NameBox.Text);
-            cmd.Parameters.AddWithValue("@Age", double.Parse(AgeBox.Text));
+            cmd.Parameters.AddWithValue("@Release_Year", int.Parse(ReleaseBox.Text));
+            cmd.Parameters.AddWithValue("@Completed", CompletedComboBox.Text);
             cmd.ExecuteNonQuery();
             con.Close();
             ShowGrid();
@@ -51,10 +51,10 @@ namespace SQLWinForm
         {
             SqlConnection con = new SqlConnection(ConnectionString);
             con.Open();
-            SqlCommand cmd = new SqlCommand("Update UserTab set Name=@Name, Age=@Age where ID=@ID", con);
-            cmd.Parameters.AddWithValue("@ID", int.Parse(IDBox.Text));
+            SqlCommand cmd = new SqlCommand("Update GameList set Release_Year=@Release_Year, Completed=@Completed where Name=@Name", con);
             cmd.Parameters.AddWithValue("@Name", NameBox.Text);
-            cmd.Parameters.AddWithValue("@Age", double.Parse(AgeBox.Text));
+            cmd.Parameters.AddWithValue("@Release_Year", int.Parse(ReleaseBox.Text));
+            cmd.Parameters.AddWithValue("@Completed", CompletedComboBox.Text);
             cmd.ExecuteNonQuery();
             con.Close();
             ShowGrid();
@@ -64,8 +64,8 @@ namespace SQLWinForm
         {
             SqlConnection con = new SqlConnection(ConnectionString);
             con.Open();
-            SqlCommand cmd = new SqlCommand("Delete UserTab where ID=@ID", con);
-            cmd.Parameters.AddWithValue("@ID", int.Parse(IDBox.Text));
+            SqlCommand cmd = new SqlCommand("Delete GameList where Name=@Name", con);
+            cmd.Parameters.AddWithValue("@Name", NameBox.Text);
             cmd.ExecuteNonQuery();
             con.Close();
             ShowGrid();
@@ -75,14 +75,55 @@ namespace SQLWinForm
         {
             SqlConnection con = new SqlConnection(ConnectionString);
             con.Open();
-            if (IDBox.Text == "")
+            if (NameBox.Text == "" && ReleaseBox.Text == "" && CompletedComboBox.Text == "")
             {
                 ShowGrid();
             }
             else
             {
-                SqlCommand cmd = new SqlCommand("Select * from UserTab where ID=@ID", con);
-                cmd.Parameters.AddWithValue("@ID", int.Parse(IDBox.Text));
+                string Name = "";
+                string ReleaseYear = "";
+                string Completed = "";
+
+                //Checking how the CommandString needs to be constructed.
+                if (NameBox.Text != "")
+                {
+                    Name = " where Name=@Name";
+                    if (ReleaseBox.Text != "")
+                    {
+                        ReleaseYear = " AND Release_Year=@Release_Year";
+                        if (CompletedComboBox.Text != "")
+                        {
+                            Completed = " AND Completed=@Completed";
+                        }
+                    }
+                }
+                else if (ReleaseBox.Text != "")
+                {
+                    ReleaseYear = " where Release_Year=@Release_Year";
+                    if (CompletedComboBox.Text != "")
+                    {
+                        Completed = " AND Completed=@Completed";
+                    }
+                }
+                else if (CompletedComboBox.Text != "")
+                {
+                    Completed = " where Completed=@Completed";
+                }
+                string CommandString = $"Select * from GameList{Name}{ReleaseYear}{Completed}";
+                SqlCommand cmd = new SqlCommand(CommandString, con);
+                if (NameBox.Text != "")
+                {
+                    cmd.Parameters.AddWithValue("@Name", NameBox.Text);
+                }
+                if (ReleaseBox.Text != "")
+                {
+                    cmd.Parameters.AddWithValue("@Release_Year", int.Parse(ReleaseBox.Text));
+                }
+                if (CompletedComboBox.Text != "")
+                {
+                    cmd.Parameters.AddWithValue("@Completed", CompletedComboBox.Text);
+                }
                 SqlDataAdapter da = new SqlDataAdapter(cmd);
                 DataTable dt = new DataTable();
                 da.Fill(dt);
