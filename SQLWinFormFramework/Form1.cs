@@ -1,11 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Data.SqlClient;
 
@@ -33,17 +27,44 @@ namespace SQLWinForm
             con.Close();
         }
 
+        //Method to check if the name of the game already exists in the database
+        private DataTable CheckExistence(string GameName, SqlConnection SqlConnectionString)
+        {
+            SqlDataAdapter da = new SqlDataAdapter($"Select Name From Gamelist where Name = '{GameName}'", SqlConnectionString);
+            DataTable TestTable = new DataTable();
+            da.Fill(TestTable);
+            return TestTable;
+        }
+
         private string ConnectionString = "Server=(Local);Initial Catalog=Demo;Integrated Security=True";
 
         private void InsertButton_Click(object sender, EventArgs e)
         {
             SqlConnection con = new SqlConnection(ConnectionString);
             con.Open();
-            SqlCommand cmd = new SqlCommand("insert into GameList values (@Name,@Release_Year,@Completed)", con);
-            cmd.Parameters.AddWithValue("@Name", NameBox.Text);
-            cmd.Parameters.AddWithValue("@Release_Year", int.Parse(ReleaseBox.Text));
-            cmd.Parameters.AddWithValue("@Completed", CompletedComboBox.Text);
-            cmd.ExecuteNonQuery();
+
+            try
+            {
+                if (CheckExistence(NameBox.Text, con).Rows.Count >= 1)
+                {
+                    MessageBox.Show("This game already exists.");
+                }
+                else
+                {
+                    SqlCommand cmd = new SqlCommand("insert into GameList values (@Name,@Release_Year,@Completed)", con);
+                    cmd.Parameters.AddWithValue("@Name", NameBox.Text);
+                    cmd.Parameters.AddWithValue("@Release_Year", int.Parse(ReleaseBox.Text));
+                    cmd.Parameters.AddWithValue("@Completed", CompletedComboBox.Text);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex) when (
+                ex is SqlException
+                || ex is FormatException)
+            {
+                MessageBox.Show("Fill every column");
+            }
+
             con.Close();
             ShowGrid();
         }
@@ -52,11 +73,29 @@ namespace SQLWinForm
         {
             SqlConnection con = new SqlConnection(ConnectionString);
             con.Open();
-            SqlCommand cmd = new SqlCommand("Update GameList set Release_Year=@Release_Year, Completed=@Completed where Name=@Name", con);
-            cmd.Parameters.AddWithValue("@Name", NameBox.Text);
-            cmd.Parameters.AddWithValue("@Release_Year", int.Parse(ReleaseBox.Text));
-            cmd.Parameters.AddWithValue("@Completed", CompletedComboBox.Text);
-            cmd.ExecuteNonQuery();
+
+            try
+            {
+                if (CheckExistence(NameBox.Text, con).Rows.Count >= 1)
+                {
+                    SqlCommand cmd = new SqlCommand("Update GameList set Release_Year=@Release_Year, Completed=@Completed where Name=@Name", con);
+                    cmd.Parameters.AddWithValue("@Name", NameBox.Text);
+                    cmd.Parameters.AddWithValue("@Release_Year", int.Parse(ReleaseBox.Text));
+                    cmd.Parameters.AddWithValue("@Completed", CompletedComboBox.Text);
+                    cmd.ExecuteNonQuery();
+                }
+                else
+                {
+                    MessageBox.Show("This game does not exist.");
+                }
+            }
+            catch (Exception ex) when (
+                    ex is SqlException
+                    || ex is FormatException)
+            {
+                MessageBox.Show("Fill every column");
+            }
+
             con.Close();
             ShowGrid();
         }
@@ -65,17 +104,37 @@ namespace SQLWinForm
         {
             SqlConnection con = new SqlConnection(ConnectionString);
             con.Open();
-            SqlCommand cmd = new SqlCommand("Delete GameList where Name=@Name", con);
-            cmd.Parameters.AddWithValue("@Name", NameBox.Text);
-            cmd.ExecuteNonQuery();
+
+            try
+            {
+                if (CheckExistence(NameBox.Text, con).Rows.Count >= 1)
+                {
+                    SqlCommand cmd = new SqlCommand("Delete GameList where Name=@Name", con);
+                    cmd.Parameters.AddWithValue("@Name", NameBox.Text);
+                    cmd.ExecuteNonQuery();
+                }
+                else
+                {
+                    MessageBox.Show("This game does not exist.");
+                }
+            }
+            catch (Exception ex) when (
+                ex is SqlException
+                || ex is FormatException)
+            {
+                MessageBox.Show("Fill the Name column");
+            }
+
             con.Close();
             ShowGrid();
         }
 
+        //Can search games by name, relase year and/or completion
         private void SearchButton_Click(object sender, EventArgs e)
         {
             SqlConnection con = new SqlConnection(ConnectionString);
             con.Open();
+
             if (NameBox.Text == "" && ReleaseBox.Text == "" && CompletedComboBox.Text == "")
             {
                 ShowGrid();
@@ -89,19 +148,23 @@ namespace SQLWinForm
                 //Checking how the CommandString needs to be constructed.
                 if (NameBox.Text != "")
                 {
-                    Name = " where Name=@Name";
+                    Name = " where Name like @Name";
                     if (ReleaseBox.Text != "")
                     {
-                        ReleaseYear = " AND Release_Year=@Release_Year";
+                        ReleaseYear = " AND Release_Year like @Release_Year";
                         if (CompletedComboBox.Text != "")
                         {
                             Completed = " AND Completed=@Completed";
                         }
                     }
+                    else if (CompletedComboBox.Text != "")
+                    {
+                        Completed = " AND Completed=@Completed";
+                    }
                 }
                 else if (ReleaseBox.Text != "")
                 {
-                    ReleaseYear = " where Release_Year=@Release_Year";
+                    ReleaseYear = " where Release_Year like @Release_Year";
                     if (CompletedComboBox.Text != "")
                     {
                         Completed = " AND Completed=@Completed";
@@ -115,11 +178,11 @@ namespace SQLWinForm
                 SqlCommand cmd = new SqlCommand(CommandString, con);
                 if (NameBox.Text != "")
                 {
-                    cmd.Parameters.AddWithValue("@Name", NameBox.Text);
+                    cmd.Parameters.AddWithValue("@Name", $"%{NameBox.Text}%");
                 }
                 if (ReleaseBox.Text != "")
                 {
-                    cmd.Parameters.AddWithValue("@Release_Year", int.Parse(ReleaseBox.Text));
+                    cmd.Parameters.AddWithValue("@Release_Year", $"%{ReleaseBox.Text}%");
                 }
                 if (CompletedComboBox.Text != "")
                 {
@@ -131,6 +194,7 @@ namespace SQLWinForm
                 dataGridView1.DataSource = dt;
                 cmd.ExecuteNonQuery();
             }
+
             con.Close();
         }
     }
